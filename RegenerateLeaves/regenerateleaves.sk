@@ -1,0 +1,23 @@
+# Скрипт который регенерирует листву в определённом регионе worldguard
+# Created by Dementerqq
+
+on load: # Конфиг
+  set {_config} to "regenerateleaves"
+  LoadConfig("plugins/RegenerateLeaves/config.yml", {_config})
+  SetConfig("region_name", "example", "Название региона", {_config})
+  SetConfig("regenerate_time", "5 second", "Время регенерации", {_config})
+
+command /regenerateleaves reload: # Команда
+  permission: admin
+  usage: &cИспользуй /regenerateleaves reload
+  description: &aПерезагрузка конфигурации
+  trigger:
+    send "&a| &fRegenerateLeaves &7был перезагружен!"
+    reload script script
+
+on break:
+  any leaves contains event-block
+  event-block is in region GetConfig("region_name", "regenerateleaves")
+  set {_block} to type of event-block
+  wait GetConfig("regenerate_time", "regenerateleaves") parsed as timespan
+  set event-block to {_block}
