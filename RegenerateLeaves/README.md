@@ -3,4 +3,4 @@
 
 Идея от: Black Hole Sun
 
-Skript 2.9.5+ | Addons: skript-yaml
+Skript 2.9.5 | Addons: skript-yaml
