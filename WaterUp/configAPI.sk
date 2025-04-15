@@ -1,0 +1,15 @@
+# Более удобное создание конфигурации
+# Created by Dementerqq
+
+function LoadConfig(file: text, name: text): # Загрузить конфиг
+  load yaml {_file} as {_name}
+
+function SetConfig(var: text, value: object, comments: object, name: text): # Установить в конифг
+  GetConfig({_var}, {_name}) != object
+  set yaml value {_var} from {_name} to {_value}
+  if {_comments} != "none":
+    set comments of yaml node {_var} from {_name} to {_comments}
+  save yaml {_name}
+
+function GetConfig(var: text, name: text):: object: # Получить из конфига
+  return yaml value {_var} from {_name}

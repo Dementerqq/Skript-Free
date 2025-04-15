@@ -1,0 +1,76 @@
+on load: # Конфиг
+  set {_config} to "waterup"
+  LoadConfig("plugins/WaterUp/config.yml", {_config})
+  SetConfig("region_name", "waterup", "Название региона", {_config})
+  SetConfig("wait", "5 tick", "Время ожидания", {_config})
+  SetConfig("y_max", 90, "Максимальный Y", {_config})
+  SetConfig("y_min", 74, "Минимальный Y", {_config})
+  set {waterup::current} to GetConfig("y_min", "waterup")
+  set {waterup::control} to "up"
+  while size of all players >= 1:
+    WaterControl()
+    wait GetConfig("wait", "waterup") parsed as timespan
+    if script is not valid:
+      stop
+
+command /waterup [<text>]: # Команда
+  trigger:
+    if arg-1 is not set:
+      set {waterup::current} to 0 if {waterup::current} is not set
+      send "&a| &7Сейчас уровень: %{waterup::current}%"
+    else if arg-1 is "reload":
+      send "&a| &fWaterUp &7был перезагружен!"
+      reload script
+    else if arg-1 is "up":
+      set {waterup::control} to "up"
+      send "&a| &7Уровень поднимается"
+    else if arg-1 is "down":
+      set {waterup::control} to "down"
+      send "&a| &7Уровень опускается"
+    else if arg-1 is "control":
+      WaterControl()
+    else:
+      send "&c/waterup <reload|up|down|control>"
+
+on block flow: # Запрет на распространение воды
+  event-block is in region GetConfig("region_name", "waterup")
+  cancel event
+
+local function WaterControl():
+  if {waterup::current} >= GetConfig("y_max", "waterup"):
+    set {waterup::control} to "down"
+  else if {waterup::current} <= GetConfig("y_min", "waterup"):
+    set {waterup::control} to "up"
+  if {waterup::control} is "up":
+    WaterUp()
+  else:
+    WaterDown()
+
+
+local function WaterUp():
+  add 1 to {waterup::current}
+  if {waterup::current} > GetConfig("y_max", "waterup"):
+    stop 
+  loop all blocks in region "waterup":
+    y-coords of loop-block <= {waterup::current}
+    if loop-block is air:
+      set loop-block to water
+    else:
+      set {_blockdata} to "%block data of loop-block%"
+      {_blockdata} contains "waterlogged"
+      replace all "waterlogged=false" in {_blockdata} with "waterlogged=true"
+      set loop-block to {_blockdata} parsed as block data
+
+local function WaterDown():
+  add -1 to {waterup::current}
+  if {waterup::current} <= GetConfig("y_min", "waterup"):
+    stop 
+  loop all blocks in region "waterup":
+    y-coords of loop-block >= {waterup::current}
+    if loop-block is water:
+      set loop-block to air
+    else:
+      set {_blockdata} to "%block data of loop-block%"
+      {_blockdata} contains "waterlogged"
+      replace all "waterlogged=true" in {_blockdata} with "waterlogged=false"
+      set loop-block to {_blockdata} parsed as block data
