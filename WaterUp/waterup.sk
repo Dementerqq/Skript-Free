@@ -5,13 +5,10 @@ on load: # Конфиг
   SetConfig("wait", "5 tick", "Время ожидания", {_config})
   SetConfig("y_max", 90, "Максимальный Y", {_config})
   SetConfig("y_min", 74, "Минимальный Y", {_config})
-  set {waterup::current} to GetConfig("y_min", "waterup")
-  set {waterup::control} to "up"
-  while size of all players >= 1:
-    WaterControl()
+  while script is valid:
+    if size of all players >= 1:
+      WaterControl()
     wait GetConfig("wait", "waterup") parsed as timespan
-    if script is not valid:
-      stop
 
 command /waterup [<text>]: # Команда
   trigger:
@@ -37,6 +34,7 @@ on block flow: # Запрет на распространение воды
   cancel event
 
 local function WaterControl():
+  set {waterup::current} to 0 if {waterup::current} is not set
   if {waterup::current} >= GetConfig("y_max", "waterup"):
     set {waterup::control} to "down"
   else if {waterup::current} <= GetConfig("y_min", "waterup"):
