@@ -1,74 +1,162 @@
-on load: # Конфиг
-  set {_config} to "waterup"
-  LoadConfig("plugins/WaterUp/config.yml", {_config})
-  SetConfig("region_name", "waterup", "Название региона", {_config})
-  SetConfig("wait", "5 tick", "Время ожидания", {_config})
-  SetConfig("y_max", 90, "Максимальный Y", {_config})
-  SetConfig("y_min", 74, "Минимальный Y", {_config})
-  while script is valid:
-    if size of all players >= 1:
-      WaterControl()
-    wait GetConfig("wait", "waterup") parsed as timespan
+on load:
+  Load()
 
 command /waterup [<text>]: # Команда
   trigger:
     if arg-1 is not set:
-      set {waterup::current} to 0 if {waterup::current} is not set
-      send "&a| &7Сейчас уровень: %{waterup::current}%"
+      set {-waterup::current} to 0 if {-waterup::current} is not set
+      send "&a| &7Плагин сейчас &aработает&7!" if {waterup} is true else "&c| &7Плагин сейчас &cне работает&7!"
+      send "&a| &7Сейчас уровень: %{-waterup::current}%"
     else if arg-1 is "reload":
-      send "&a| &fWaterUp &7был перезагружен!"
+      LoadCfg()
+      send "&a| &fWaterUp &7конфигурация была перезагружена!"
+    else if arg-1 is "reloadall":
+      send "&a| &7&fWaterUp &7был полностью перезагружен!"
       reload script
     else if arg-1 is "up":
-      set {waterup::control} to "up"
+      set {-waterup::control} to "up"
       send "&a| &7Уровень поднимается"
     else if arg-1 is "down":
-      set {waterup::control} to "down"
+      set {-waterup::control} to "down"
       send "&a| &7Уровень опускается"
     else if arg-1 is "control":
       WaterControl()
+      send "&a| &7Уровень изменился! &8(%{-waterup::current}%)"
+    else if arg-1 is "on":
+      set {waterup} to true
+      send "&a| &7Вы включили работу плагина &8(возможно нужна перезагрузка!)"
+      #reload script
+    else if arg-1 is "off":
+      set {waterup} to false
+      send "&c| &7Вы выключили работу плагина"
     else:
-      send "&c/waterup <reload|up|down|control>"
+      send "&c/waterup <reload|reloadall|up|down|control|on|off>"
 
 on block flow: # Запрет на распространение воды
+  {waterup} is true
   event-block is in region GetConfig("region_name", "waterup")
   cancel event
 
-local function WaterControl():
-  set {waterup::current} to 0 if {waterup::current} is not set
-  if {waterup::current} >= GetConfig("y_max", "waterup"):
-    set {waterup::control} to "down"
-  else if {waterup::current} <= GetConfig("y_min", "waterup"):
-    set {waterup::control} to "up"
-  if {waterup::control} is "up":
+local function WaterControl(): # Контроль воды
+  {waterup} is true
+  set {-waterup::current} to 0 if {-waterup::current} is not set
+  if {-waterup::current} >= GetConfig("y_max", "waterup"):
+    set {-waterup::control} to "down"
+  else if {-waterup::current} <= GetConfig("y_min", "waterup"):
+    set {-waterup::control} to "up"
+  if {-waterup::control} is "up":
     WaterUp()
   else:
     WaterDown()
 
+local function WaterUp(): # Подъём воды
+  {waterup} is true
+  if {-waterup::current} >= GetConfig("y_max", "waterup"):
+    stop
+  loop {-waterup::waters::y_%{-waterup::current}%::*}:
+    if block at loop-value is air:
+      regions at loop-value contains GetConfig("region_name", "waterup")
+      set block at loop-value to water
+  set {_m} to GetConfig("y_min", "waterup")
+  loop difference between {-waterup::current} and GetConfig("y_min", "waterup") times:
+    add 1 to {_m}
+    loop {-waterup::blockdata::y_%{_m}%::*}:
+      regions at loop-value-2 contains GetConfig("region_name", "waterup")
+      WaterBlock(block at loop-value-2, false, true)
+  add 1 to {-waterup::current}
+      
 
-local function WaterUp():
-  add 1 to {waterup::current}
-  if {waterup::current} > GetConfig("y_max", "waterup"):
+local function WaterDown(): # Спуск воды
+  {waterup} is true
+  if {-waterup::current} <= GetConfig("y_min", "waterup"):
     stop 
-  loop all blocks in region "waterup":
-    y-coords of loop-block <= {waterup::current}
-    if loop-block is air:
-      set loop-block to water
-    else:
-      set {_blockdata} to "%block data of loop-block%"
-      {_blockdata} contains "waterlogged"
-      replace all "waterlogged=false" in {_blockdata} with "waterlogged=true"
-      set loop-block to {_blockdata} parsed as block data
+  loop {-waterup::waters::y_%{-waterup::current}%::*}:
+    if block at loop-value is water:
+      regions at loop-value contains GetConfig("region_name", "waterup")
+      set block at loop-value to air
+  set {_m} to GetConfig("y_max", "waterup")
+  loop difference between GetConfig("y_max", "waterup") and {-waterup::current} times:
+    add -1 to {_m}
+    loop {-waterup::blockdata::y_%{_m}%::*}:
+      regions at loop-value-2 contains GetConfig("region_name", "waterup")
+      WaterBlock(block at loop-value-2, true, false)
+  add -1 to {-waterup::current}
 
-local function WaterDown():
-  add -1 to {waterup::current}
-  if {waterup::current} <= GetConfig("y_min", "waterup"):
-    stop 
-  loop all blocks in region "waterup":
-    y-coords of loop-block >= {waterup::current}
-    if loop-block is water:
-      set loop-block to air
-    else:
-      set {_blockdata} to "%block data of loop-block%"
-      {_blockdata} contains "waterlogged"
-      replace all "waterlogged=true" in {_blockdata} with "waterlogged=false"
-      set loop-block to {_blockdata} parsed as block data
+local function WaterBlock(block: block, bool1: boolean, bool2: boolean): # Изменение block data
+  {waterup} is true
+  set {_blockdata} to "%block data of {_block}%"
+  replace all "waterlogged=%{_bool1}%" in {_blockdata} with "waterlogged=%{_bool2}%"
+  set block data of block at {_block} to {_blockdata} parsed as block data
+
+local function Load(): # Загрузка всего
+  if {waterup} is not set:
+    set {waterup} to true
+  LoadCfg()
+  wait 10 tick
+  set {-waterup::current} to GetConfig("y_min", "waterup")
+  set {-waterup::control} to "up"
+  LoadRegion()
+
+local function Thread(): # Цикл
+  send "&aWaterUp | &7Цикл запущен!" to console
+  while script is valid:
+    if {waterup} is true:
+      if size of all players >= 1:
+        set {_t} to {-waterup::control}
+        WaterControl()
+        wait 1 tick
+        if {-waterup::control} != {_t}:
+          wait GetConfig("water_cooldown", "waterup") parsed as timespan
+    wait GetConfig("wait", "waterup") parsed as timespan
+  send "&cWaterUp | &7Цикл завершён!" to console
+
+local function LoadCfg(): # Загрузка конфигурации
+  set {_config} to "waterup"
+  LoadConfig("plugins/WaterUp/config.yml", {_config})
+  SetConfig("region_name", "waterup", "Название региона", {_config})
+  SetConfig("region_exclude", "waterupex", "Название региона", {_config})
+  SetConfig("wait", "5 tick", "Время ожидания до следующего изменения уровня воды", {_config})
+  SetConfig("water_cooldown", "30 second", "Время ожидания после конца цикла изменения воды", {_config})
+  SetConfig("y_max", 90, "Максимальный Y", {_config})
+  SetConfig("y_min", 74, "Минимальный Y", {_config})
+  wait 5 tick
+  set {-waterup::loc1} to first element of all blocks in the region GetConfig("region_name", "waterup")
+  set {-waterup::loc2} to last element of all blocks in the region GetConfig("region_name", "waterup")
+
+
+local function LoadRegion(): # Загрузка региона
+  create new section stored in {_section}:
+    {waterup} is true
+    send "&aWaterUp | &7Загруза уровней..." to console
+    set {_wc} to {-waterup::current}
+    set {_t} to difference between GetConfig("y_max", "waterup") and GetConfig("y_min", "waterup")
+    delete {-waterup::waters::*}
+    delete {-waterup::blockdata::*}
+    loop {_t} times:
+      {waterup} is true
+      send actionbar "&aЗагрузка уровня: %{_wc}%" to operators
+      if {_wc} > GetConfig("y_max", "waterup"):
+        stop
+      if script is not valid:
+        stop
+      set {_loc1} to location of {-waterup::loc1}
+      set {_loc2} to location of {-waterup::loc2}
+      set y-coords of {_loc2} to {_wc}
+      set y-coords of {_loc1} to {_wc}
+      loop all blocks within {_loc1} and {_loc2}:
+        {waterup} is true
+        regions at loop-block contains GetConfig("region_name", "waterup")
+        regions at loop-block don't contain GetConfig("region_exclude", "waterup")
+        if loop-block is air or water:
+          add 1 to {_n1}
+          set {-waterup::waters::y_%{_wc}%::%{_n1}%} to location of loop-block
+        if "%block data of loop-block%" contains "waterlogged=false" or "waterlogged=true":
+          add 1 to {_n2}
+          set {-waterup::blockdata::y_%{_wc}%::%{_n2}%} to location of loop-block
+      add 1 to {_wc}
+      delete {_n1}
+      delete {_n2}
+    send "&aWaterUp | &7Загрузка уровней завершена!" to console
+    send actionbar "&aЗагрузка уровней завершена!" to operators
+    Thread()
+  run section {_section} async
