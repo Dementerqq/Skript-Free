@@ -40,3 +40,15 @@ on damage of animal or villager or end crystal:
     time played of attacker < 6 hours
     send actionbar "&cВы не можете бить мирных на спавне!" to attacker
     cancel event
+    
+on right click on a item frame:
+  if event-location is within {-sp::loc1} and {-sp::loc2}:
+    time played of player < 6 hours
+    send actionbar "&cВы не можете управлять рамками на спавне!" to player
+    cancel event
+
+on damage of item frame:
+  if event-location is within {-sp::loc1} and {-sp::loc2}:
+    time played of attacker < 6 hours
+    send actionbar "&cВы не можете управлять рамками на спавне!" to attacker
+    cancel event
