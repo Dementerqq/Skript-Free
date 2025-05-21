@@ -1,0 +1,42 @@
+on load:
+  set {-sp::loc1} to location(500, 350, 500, world("world"))
+  set {-sp::loc2} to location(-500, -100, -500, world("world"))
+
+command /trusted:
+  trigger:
+    set {_time} to time played of player
+    if {_time} < 6 hours:
+      send "&a| &7Вы наиграли %hours of {_time}%/6 часов"
+    else:
+      send "&a| &7Вы наиграли больше 6 часов!"
+
+on break:
+  if event-location is within {-sp::loc1} and {-sp::loc2}:
+    time played of player < 6 hours
+    send actionbar "&cВы не можете ломать блоки на спавне!"
+    cancel event
+
+on place:
+  if event-location is within {-sp::loc1} and {-sp::loc2}:
+    time played of player < 6 hours
+    send actionbar "&cВы не можете ставить блоки на спавне!"
+    cancel event
+
+on inventory open:
+  if location of player is within {-sp::loc1} and {-sp::loc2}:
+    time played of player < 6 hours
+    event-inventory is not workbench inventory
+    send actionbar "&cВы не можете открывать блоки на спавне!"
+    cancel event
+
+on right click holding a end crystal:
+  if clicked block is within {-sp::loc1} and {-sp::loc2}:
+    time played of player < 6 hours
+    send actionbar "&cВы не можете ставить кристалы на спавне!"
+    cancel event
+
+on damage of animal or villager or end crystal:
+  if event-location is within {-sp::loc1} and {-sp::loc2}:
+    time played of attacker < 6 hours
+    send actionbar "&cВы не можете бить мирных на спавне!" to attacker
+    cancel event
